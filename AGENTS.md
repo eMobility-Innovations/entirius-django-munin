@@ -1,8 +1,7 @@
 # AGENTS.md
 
-Module discovery and runtime configuration for Volkanos — distribution `entirius-django-munin`,
-Django app `django_munin`. Auto-discovers installed Volkanos modules via `is_volkanos = True` flag
-on AppConfig, introspects their structure (models, API, channels, translations…), persists to DB,
+`entirius-django-munin` (Django app `django_munin`) — module discovery and runtime configuration for Entirius.
+Auto-discovers installed Entirius modules via the `is_volkanos = True` flag on AppConfig, introspects their structure (models, API, channels, translations…), persists to DB,
 and serves via REST API. Frontends read this instead of hardcoding module lists.
 
 ## Commands
@@ -25,6 +24,7 @@ and serves via REST API. Frontends read this instead of hardcoding module lists.
 - Access: areas live on the AppConfig (`access_areas`, `access_route_rules`), every admin view carries
   `access_area`; a new admin route without one fails `tests/test_access_ownership.py`.
 - Default: do not commit — git is the user's call.
+- No AI attribution in commits or PR descriptions.
 
 ## Architecture
 
@@ -44,6 +44,17 @@ and serves via REST API. Frontends read this instead of hardcoding module lists.
 - `management/commands/discover_modules.py` — manual re-scan entry point.
 
 Layer rule: `API → Services → Models → DB`. No ORM in views.
+
+| Topic | Where |
+|---|---|
+| API surface, configuration health, consumers | `docs/index.md` |
+| ERD config for the docs ERD generator | `docs/erd-config.yaml` |
+
+## Settings
+
+| Setting | Default | Description |
+|---|---|---|
+| `MUNIN_CACHE_TTL` | `300` | Cache lifetime of the registry responses, in seconds |
 
 ## Gotchas
 
