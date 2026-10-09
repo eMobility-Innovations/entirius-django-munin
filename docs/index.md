@@ -38,7 +38,9 @@ Responses are cached (`MUNIN_CACHE_TTL`, default 300s); cache invalidates via po
 
 Munin aggregates every Django system check tagged `entirius_config`; a check's second tag is its code
 (`email.smtp`). Each row carries `code`, `module`, `state`, `severity`, `title`, `detail`, `fix_url`, `scope`;
-failing rows come first, then one `configured` row per passing code. Probes (tag `entirius_probe`, registered
+failing rows come first, then one `configured` row per passing code. `state` is `configured`, `unconfigured`,
+`unreachable`, `auth_failed`, `disabled` or `error`. `disabled` is a passing row with its state visible: something
+switched off on purpose, `severity` empty, listed after the failing rows and before the `configured` ones. Probes (tag `entirius_probe`, registered
 `deploy=True`) run only on `POST /health/check/`. The same verdicts from the CLI:
 
 ```bash
@@ -46,7 +48,14 @@ python manage.py check --database default --tag entirius_config
 ```
 
 Munin registers `toolbox.status` itself when `django_utils.toolbox` is installed — `django_utils.toolbox.status()`
-as a check (probe cached 60 s). The contract for adding a check lives in the portal guide *Configuration*.
+as a check (probe cached 60 s). `unconfigured` and `unreachable` are warnings. With `AI_TOOLBOX_ENABLED = False`
+the toolbox is `disabled`: the check passes, `health/` shows the row with `state: disabled`, and the CLI prints
+nothing for it. Munin calls every check with `report_state=True`; a check that accepts the keyword may answer a
+`checks.Info` for such a state, while Django's own runner (`check`, `runserver`, `migrate`) never passes it.
+
+The public registry `GET /api/munin/v2/` carries the same state as `platform.toolbox.state` (`configured`,
+`unconfigured`, `unreachable` or `disabled`; `platform.toolbox` is `null` when the toolbox client is not
+installed), so a test suite can read it without admin credentials. The contract for adding a check lives in the portal guide *Configuration*.
 
 ## Consumers
 

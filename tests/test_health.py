@@ -10,7 +10,7 @@ from types import ModuleType
 from unittest.mock import Mock, patch
 
 import pytest
-from django.core.checks import Warning
+from django.core.checks import Info, Warning
 from django.core.checks.registry import CheckRegistry
 
 from django_munin import checks as munin_checks
@@ -73,6 +73,25 @@ class TestCollect:
             "probe": False,
         }
 
+    def test_checks_are_asked_to_report_their_state(self, registry):
+        seen = {}
+        registry.register(lambda **kw: seen.update(kw) or [], "entirius_config", "a.state")
+        health_service.collect()
+        assert seen[health_service.REPORT_STATE_KWARG] is True
+
+    def test_informational_row_sorts_after_failing_and_before_configured(self, registry):
+        info = Info("d.off off", hint="on purpose", id="d.off", obj={"state": "disabled", "severity": "high"})
+        registry.register(lambda **kw: [info], "entirius_config", "d.off")
+        registry.register(lambda **kw: [], "entirius_config", "a.ok")
+        registry.register(lambda **kw: [_warning("b.low", severity="low")], "entirius_config", "b.low")
+        rows = health_service.collect()
+        assert [(r["code"], r["state"], r["severity"]) for r in rows] == [
+            ("b.low", "unconfigured", "low"),
+            ("d.off", "disabled", ""),
+            ("a.ok", "configured", ""),
+        ]
+        assert (rows[1]["title"], rows[1]["detail"]) == ("d.off off", "on purpose")
+
     def test_untagged_checks_are_ignored(self, registry):
         registry.register(lambda **kw: [_warning("x.y")], "models")
         assert health_service.collect() == []
@@ -122,6 +141,22 @@ class TestEndpoints:
         assert response.status_code == 200
         assert [r["code"] for r in response.data["checks"]] == ["a.p"]
 
+    def test_disabled_toolbox_is_one_passing_row_with_its_state(self, admin_client, registry, toolbox_status):
+        toolbox_status.return_value = "disabled"
+        registry.register(munin_checks.toolbox_reachable, "entirius_config", munin_checks.TOOLBOX_CODE)
+        [row] = admin_client.get(URL).data["checks"]
+        assert row == {
+            "code": "toolbox.status",
+            "module": "toolbox",
+            "state": "disabled",
+            "severity": "",
+            "title": "AI toolbox disabled",
+            "detail": "AI_TOOLBOX_ENABLED is False on this instance: AI features are switched off on purpose.",
+            "fix_url": munin_checks.TOOLBOX_FIX_URL,
+            "scope": "",
+            "probe": False,
+        }
+
 
 class TestToolboxCheck:
     def test_registered_only_with_the_client_installed(self, registry):
@@ -137,10 +172,29 @@ class TestToolboxCheck:
         toolbox_status.return_value = "configured"
         assert munin_checks.toolbox_reachable() == []
 
+    def test_disabled_is_silent_for_the_django_runner(self, toolbox_status):
+        toolbox_status.return_value = "disabled"
+        assert munin_checks.toolbox_reachable() == []
+        assert munin_checks.toolbox_reachable(app_configs=None, databases=["default"]) == []
+
+    def test_disabled_is_an_info_row_when_state_is_reported(self, toolbox_status):
+        toolbox_status.return_value = "disabled"
+        [message] = munin_checks.toolbox_reachable(report_state=True)
+        assert isinstance(message, Info)
+        assert (message.id, message.msg) == ("toolbox.status", "AI toolbox disabled")
+        assert "AI_TOOLBOX_ENABLED is False" in message.hint
+        assert message.obj == {"state": "disabled", "severity": "", "fix_url": munin_checks.TOOLBOX_FIX_URL}
+
+    def test_configured_passes_when_state_is_reported(self, toolbox_status):
+        toolbox_status.return_value = "configured"
+        assert munin_checks.toolbox_reachable(report_state=True) == []
+
+    @pytest.mark.parametrize("report_state", [False, True])
     @pytest.mark.parametrize(("state", "severity"), [("unconfigured", "medium"), ("unreachable", "high")])
-    def test_failing_states(self, toolbox_status, state, severity):
+    def test_failing_states(self, toolbox_status, state, severity, report_state):
         toolbox_status.return_value = state
-        [message] = munin_checks.toolbox_reachable()
+        [message] = munin_checks.toolbox_reachable(report_state=report_state)
+        assert isinstance(message, Warning)
         assert message.id == "toolbox.status"
         assert (message.obj["state"], message.obj["severity"]) == (state, severity)
         assert message.obj["fix_url"].startswith("https://")

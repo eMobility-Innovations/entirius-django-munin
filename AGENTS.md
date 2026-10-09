@@ -39,7 +39,8 @@ and serves via REST API. Frontends read this instead of hardcoding module lists.
   `ConfigHealthViewSet` (IsAdminUser) serves `health/` and `health/check/` — listed before `<str:key>/`,
   which would take "health" for a module key.
 - `services/health_service.py` — runs the system checks tagged `entirius_config` (+ `entirius_probe` on
-  request) with `databases=["default"]`; never cached. `checks.py` registers `toolbox.status` only when
+  request) with `databases=["default"]` and `report_state=True` (a message below `WARNING` is a passing row with
+  its state shown, e.g. the toolbox `disabled`); never cached. `checks.py` registers `toolbox.status` only when
   `find_spec("django_utils.toolbox")` finds the client; munin never hard-imports the toolbox.
 - `management/commands/discover_modules.py` — manual re-scan entry point.
 

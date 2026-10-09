@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-"""Tests for `platform.toolbox_status` on the module list."""
+"""Tests for `platform.toolbox` and the deprecated `platform.toolbox_status` on the module list."""
 
 import sys
 from importlib.machinery import ModuleSpec
@@ -63,6 +63,15 @@ class TestToolboxStatus:
             response = api_client.get("/api/munin/v2/")
         assert response.status_code == 200
         assert response.data["platform"]["toolbox_status"] is None
+        assert response.data["platform"]["toolbox"] is None
+
+    @pytest.mark.parametrize("state", ["configured", "unconfigured", "unreachable", "disabled"])
+    def test_public_registry_carries_the_toolbox_state(self, api_client, toolbox_status, state):
+        toolbox_status.return_value = state
+        response = api_client.get("/api/munin/v2/")
+        assert response.status_code == 200
+        assert response.data["platform"]["toolbox"] == {"state": state}
+        assert response.data["platform"]["toolbox_status"] == state
 
     def test_toolbox_status_unconfigured(self, api_client, toolbox_status):
         toolbox_status.return_value = "unconfigured"
@@ -79,9 +88,13 @@ class TestToolboxStatus:
         ModuleFactory(key="pim")
         public = api_client.get("/api/munin/v2/").data
         assert list(public) == ["platform", "modules"]
-        assert public["platform"] == {"version": "2.0.0", "toolbox_status": "configured"}
+        assert public["platform"] == {
+            "version": "2.0.0",
+            "toolbox_status": "configured",
+            "toolbox": {"state": "configured"},
+        }
         assert set(public["modules"]["pim"]) == PUBLIC_MODULE_FIELDS
         api_client.force_authenticate(user=admin_user)
         admin = api_client.get("/api/munin/v2/").data
-        assert list(admin["platform"]) == ["version", "toolbox_status"]
+        assert list(admin["platform"]) == ["version", "toolbox_status", "toolbox"]
         assert set(admin["modules"]["pim"]) == ADMIN_MODULE_FIELDS

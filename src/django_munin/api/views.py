@@ -39,9 +39,11 @@ def _is_admin_request(request: Request) -> bool:
 
 
 def _toolbox_status() -> str | None:
-    """Deprecated since the config-health release — `toolbox.status` in `GET health/` replaces it; removed in 3.0.0.
+    """Toolbox state for the public registry: `platform.toolbox.state`, readable without admin credentials.
 
-    Kept so a CMS older than the health panel keeps its toolbox banner after a munin upgrade.
+    Also sent as `platform.toolbox_status`, deprecated since the config-health release (`toolbox.status` in
+    `GET health/` replaces it; removed in 3.0.0) — kept so a CMS older than the health panel keeps its toolbox
+    banner after a munin upgrade.
     """
     if find_spec("django_utils.toolbox") is None:
         return None
@@ -65,7 +67,8 @@ class MuninViewSet(viewsets.ViewSet):
     def list(self, request: Request, **kwargs) -> Response:
         is_admin = _is_admin_request(request)
         data = config_service.get_module_list(is_admin=is_admin)
-        platform = {**data["platform"], "toolbox_status": _toolbox_status()}
+        state = _toolbox_status()
+        platform = {**data["platform"], "toolbox_status": state, "toolbox": {"state": state} if state else None}
         return Response({**data, "platform": platform})
 
     @extend_schema(
