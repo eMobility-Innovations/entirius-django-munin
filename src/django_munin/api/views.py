@@ -185,7 +185,7 @@ class ConfigEntryViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-@extend_schema_view(list=extend_schema(tags=["Config Health"]), recheck=extend_schema(tags=["Config Health"]))
+@extend_schema_view(list=extend_schema(tags=["Config Health"]))
 class ConfigHealthViewSet(viewsets.ViewSet):
     """Configuration health: Django system checks tagged ``entirius_config``, computed on every read."""
 
@@ -207,6 +207,7 @@ class ConfigHealthViewSet(viewsets.ViewSet):
         description="Runs the config checks plus the live probes (tag `entirius_probe`, e.g. an SMTP login; each cached 60 s).",
         request=None,
         responses={200: ConfigHealthResponse, **_ERROR_RESPONSES},
+        tags=["Config Health"],
     )
     def recheck(self, request: Request, **kwargs) -> Response:
         return self._respond(probe=True)

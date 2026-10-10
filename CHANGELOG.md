@@ -11,6 +11,7 @@
 - `GET /api/munin/v2/` carries `platform.toolbox.state` (`configured`, `unconfigured`, `unreachable` or
   `disabled`; `platform.toolbox` is `null` without the toolbox client), readable without admin credentials.
   `platform.toolbox_status` stays deprecated and may now read `disabled`.
+- OpenAPI: `POST health/check/` carries the `Config Health` tag (it fell back to the default tag). Metadata only.
 
 ## 2.2.0 — 2026-09-30
 
