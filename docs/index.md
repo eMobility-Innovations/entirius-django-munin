@@ -34,7 +34,7 @@ Responses are cached (`MUNIN_CACHE_TTL`, default 300s); cache invalidates via po
 | Method | Path | Auth |
 |---|---|---|
 | GET | `/health/` | IsAdminUser — config checks, computed on every read (never cached by munin) |
-| POST | `/health/check/` | IsAdminUser — config checks plus live probes ("Check again") |
+| POST | `/health/check/` | IsAdminUser, and the write level of `munin.config` where the access module is installed — config checks plus live probes ("Check again") |
 
 Munin aggregates every Django system check tagged `entirius_config`; a check's second tag is its code
 (`email.smtp`). Each row carries `code`, `module`, `state`, `severity`, `title`, `detail`, `fix_url`, `scope`;

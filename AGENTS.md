@@ -37,7 +37,8 @@ and serves via REST API. Frontends read this instead of hardcoding module lists.
 - `api/` — `MuninViewSet` (AllowAny; admin JWT gets extra fields), `ConfigEntryViewSet`
   (JWT + IsAdminUser), pagination, permissions; root prefix `api/munin/v2/`.
   `ConfigHealthViewSet` (IsAdminUser) serves `health/` and `health/check/` — listed before `<str:key>/`,
-  which would take "health" for a module key.
+  which would take "health" for a module key. Access area `munin.config`: `health/` is a read, the
+  `health/check/` POST a write (it runs live probes, for example an SMTP login).
 - `services/health_service.py` — runs the system checks tagged `entirius_config` (+ `entirius_probe` on
   request) with `databases=["default"]` and `report_state=True` (a message below `WARNING` is a passing row with
   its state shown, e.g. the toolbox `disabled`); never cached. `checks.py` registers `toolbox.status` only when
