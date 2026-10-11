@@ -192,7 +192,8 @@ class ConfigHealthViewSet(viewsets.ViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAdminUser]
     access_area = "munin.config"
-    access_levels = {"POST": "read"}
+    # The recheck runs live probes (an SMTP login): POST stays a write, never a POST-read.
+    access_levels = {"POST": "write"}
 
     @extend_schema(
         summary="Configuration health",

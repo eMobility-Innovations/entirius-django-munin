@@ -13,6 +13,11 @@
   `platform.toolbox_status` stays deprecated and may now read `disabled`.
 - OpenAPI: `POST health/check/` carries the `Config Health` tag (it fell back to the default tag). Metadata only.
 
+### Security
+
+- `POST /api/munin/v2/health/check/` needs the write level of `munin.config`: it runs the live probes (for example
+  an SMTP login) and was mapped to read. The cached `GET /api/munin/v2/health/` stays readable.
+
 ## 2.2.0 — 2026-09-30
 
 - **Configuration health.** `GET /api/munin/v2/health/` (IsAdminUser) aggregates every Django system check
