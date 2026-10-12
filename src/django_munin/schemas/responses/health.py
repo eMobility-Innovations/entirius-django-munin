@@ -13,10 +13,11 @@ class ConfigCheckRow(BaseModel):
     code: str = Field(description="Check code, `<module>.<check>`", examples=["email.smtp"])
     module: str = Field(description="Munin module key the check belongs to", examples=["email"])
     state: str = Field(
-        description="configured, unconfigured, unreachable, auth_failed, or error (the check itself raised)",
+        description="configured, unconfigured, unreachable, auth_failed, disabled (switched off on purpose, not "
+        "failing), or error (the check itself raised)",
         examples=["unconfigured"],
     )
-    severity: str = Field(description="high, medium or low; empty when configured", examples=["high"])
+    severity: str = Field(description="high, medium or low; empty when configured or disabled", examples=["high"])
     title: str = Field(description="English one-liner; empty when configured", examples=["SMTP not configured"])
     detail: str = Field(description="What is wrong and what to set", examples=["Add a complete entry."])
     fix_url: str = Field(description="Where it is fixed: absolute docs URL or a CMS path", examples=["https://…"])
@@ -29,4 +30,6 @@ class ConfigCheckRow(BaseModel):
 
 class ConfigHealthResponse(BaseModel):
     checked_at: datetime = Field(description="When the checks ran")
-    checks: list[ConfigCheckRow] = Field(description="Failing rows first (by severity), then passing check codes")
+    checks: list[ConfigCheckRow] = Field(
+        description="Failing rows first (by severity), then disabled rows, then passing check codes"
+    )

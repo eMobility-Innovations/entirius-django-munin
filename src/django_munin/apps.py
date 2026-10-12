@@ -19,6 +19,13 @@ class DjangoMuninConfig(AppConfig):
     name = "django_munin"
     verbose_name = "Munin"
     is_volkanos = True
+    # Copied 1:1 from entirius-django-access cf538d2 catalogue defaults;
+    # the access defaults stay until this module's release.
+    access_areas = [
+        {"key": "munin.config", "label": "Runtime configuration and health", "sensitive": ("config",)},
+    ]
+    # Every admin view carries its access_area; no route needs a path rule.
+    access_route_rules = []
 
     def ready(self) -> None:
         from django.db.models.signals import post_delete, post_migrate, post_save

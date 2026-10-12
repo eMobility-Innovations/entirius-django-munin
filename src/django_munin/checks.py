@@ -18,6 +18,7 @@ _TOOLBOX_TEXT = {
     ),
     "unreachable": ("AI toolbox unreachable", "The toolbox did not answer GET models/ for AI_TOOLBOX_CHANNEL."),
 }
+_DISABLED_HINT = "AI_TOOLBOX_ENABLED is False on this instance: AI features are switched off on purpose."
 
 
 class _Subject(dict):
@@ -27,11 +28,16 @@ class _Subject(dict):
         return self.get("scope") or "settings"
 
 
-def toolbox_reachable(app_configs=None, **kwargs) -> list[checks.CheckMessage]:
-    """`django_utils.toolbox.status()` as a check — cached 60 s probe, never raises (unchanged from 2.1.0)."""
+def toolbox_reachable(app_configs=None, report_state: bool = False, **kwargs) -> list[checks.CheckMessage]:
+    """`django_utils.toolbox.status()` as a check — cached 60 s probe, never raises (unchanged from 2.1.0).
+
+    `disabled` passes; with `report_state` (munin's collector only, never Django's own runner) it is one Info row.
+    """
     from django_utils.toolbox.status import status
 
     state = str(status())
+    if state == "disabled" and report_state:
+        return [_disabled_info()]
     if state not in _TOOLBOX_TEXT:
         return []
     title, detail = _TOOLBOX_TEXT[state]
@@ -41,6 +47,11 @@ def toolbox_reachable(app_configs=None, **kwargs) -> list[checks.CheckMessage]:
             title, hint=detail, id=TOOLBOX_CODE, obj=_Subject(state=state, severity=severity, fix_url=TOOLBOX_FIX_URL)
         )
     ]
+
+
+def _disabled_info() -> checks.Info:
+    subject = _Subject(state="disabled", severity="", fix_url=TOOLBOX_FIX_URL)
+    return checks.Info("AI toolbox disabled", hint=_DISABLED_HINT, id=TOOLBOX_CODE, obj=subject)
 
 
 def register() -> None:

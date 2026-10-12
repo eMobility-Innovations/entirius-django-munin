@@ -39,9 +39,11 @@ def _is_admin_request(request: Request) -> bool:
 
 
 def _toolbox_status() -> str | None:
-    """Deprecated since the config-health release — `toolbox.status` in `GET health/` replaces it; removed in 3.0.0.
+    """Toolbox state for the public registry: `platform.toolbox.state`, readable without admin credentials.
 
-    Kept so a CMS older than the health panel keeps its toolbox banner after a munin upgrade.
+    Also sent as `platform.toolbox_status`, deprecated since the config-health release (`toolbox.status` in
+    `GET health/` replaces it; removed in 3.0.0) — kept so a CMS older than the health panel keeps its toolbox
+    banner after a munin upgrade.
     """
     if find_spec("django_utils.toolbox") is None:
         return None
@@ -65,7 +67,8 @@ class MuninViewSet(viewsets.ViewSet):
     def list(self, request: Request, **kwargs) -> Response:
         is_admin = _is_admin_request(request)
         data = config_service.get_module_list(is_admin=is_admin)
-        platform = {**data["platform"], "toolbox_status": _toolbox_status()}
+        state = _toolbox_status()
+        platform = {**data["platform"], "toolbox_status": state, "toolbox": {"state": state} if state else None}
         return Response({**data, "platform": platform})
 
     @extend_schema(
@@ -98,6 +101,7 @@ class ConfigEntryViewSet(viewsets.ViewSet):
 
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAdminUser]
+    access_area = "munin.config"
 
     @extend_schema(
         summary="List config entries",
@@ -181,12 +185,15 @@ class ConfigEntryViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-@extend_schema_view(list=extend_schema(tags=["Config Health"]), recheck=extend_schema(tags=["Config Health"]))
+@extend_schema_view(list=extend_schema(tags=["Config Health"]))
 class ConfigHealthViewSet(viewsets.ViewSet):
     """Configuration health: Django system checks tagged ``entirius_config``, computed on every read."""
 
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAdminUser]
+    access_area = "munin.config"
+    # The recheck runs live probes (an SMTP login): POST stays a write, never a POST-read.
+    access_levels = {"POST": "write"}
 
     @extend_schema(
         summary="Configuration health",
@@ -201,6 +208,7 @@ class ConfigHealthViewSet(viewsets.ViewSet):
         description="Runs the config checks plus the live probes (tag `entirius_probe`, e.g. an SMTP login; each cached 60 s).",
         request=None,
         responses={200: ConfigHealthResponse, **_ERROR_RESPONSES},
+        tags=["Config Health"],
     )
     def recheck(self, request: Request, **kwargs) -> Response:
         return self._respond(probe=True)

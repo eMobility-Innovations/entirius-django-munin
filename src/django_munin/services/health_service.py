@@ -6,10 +6,15 @@
 
 A check's second tag is its code (``email.smtp``); a check that returns nothing is one ``configured`` row, so the
 CMS can show what passed. Never cached — checks own their caches, and a fixed config must clear on the next read.
+
+Every check is called with ``report_state=True``: a check may then answer a message below ``WARNING`` for a state
+that passes but is worth showing (the toolbox switched off on purpose). That is an informational row — the state
+of the message, empty severity — and it stands for the code, so no ``configured`` row is added.
 """
 
 import logging
 
+from django.core import checks
 from django.core.checks import CheckMessage
 from django.core.checks.registry import registry
 
@@ -17,20 +22,21 @@ logger = logging.getLogger(__name__)
 
 CONFIG_TAG = "entirius_config"
 PROBE_TAG = "entirius_probe"
+REPORT_STATE_KWARG = "report_state"
 _SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
 def collect(probe: bool = False) -> list[dict]:
-    """Failing rows first (by severity), then one ``configured`` row per passing check code."""
+    """Failing rows first (by severity), then informational rows, then one ``configured`` row per silent code."""
     tags = {CONFIG_TAG, PROBE_TAG} if probe else {CONFIG_TAG}
-    failing: dict[str, list[dict]] = {}
+    reported: dict[str, list[dict]] = {}
     for check in registry.get_checks(include_deployment_checks=probe):
         if tags.isdisjoint(check.tags):
             continue
         code = _code(check)
-        failing.setdefault(code, []).extend(_run(check, code))
-    rows = sorted((r for rs in failing.values() for r in rs), key=lambda r: _SEVERITY_ORDER.get(r["severity"], 3))
-    return rows + [_passing_row(code) for code, rs in sorted(failing.items()) if not rs]
+        reported.setdefault(code, []).extend(_run(check, code))
+    rows = sorted((r for rs in reported.values() for r in rs), key=lambda r: _SEVERITY_ORDER.get(r["severity"], 3))
+    return rows + [_passing_row(code) for code, rs in sorted(reported.items()) if not rs]
 
 
 def _code(check) -> str:
@@ -41,18 +47,20 @@ def _code(check) -> str:
 def _run(check, code: str) -> list[dict]:
     probe = PROBE_TAG in check.tags
     try:
-        return [{**_failing_row(code, m), "probe": probe} for m in check(app_configs=None, databases=["default"])]
+        messages = check(app_configs=None, databases=["default"], **{REPORT_STATE_KWARG: True})
+        return [{**_message_row(code, m), "probe": probe} for m in messages]
     except Exception:  # noqa: BLE001 — one broken check must not take the whole panel down
         logger.exception("Configuration check %s raised", code)
         return [_row(code, state="error", severity="medium", title="Configuration check failed to run", probe=probe)]
 
 
-def _failing_row(code: str, message: CheckMessage) -> dict:
+def _message_row(code: str, message: CheckMessage) -> dict:
+    """A failing row, or an informational one (empty severity) for a message below ``WARNING``."""
     extra = message.obj if isinstance(message.obj, dict) else {}
     return _row(
         message.id or code,
         state=extra.get("state", "unconfigured"),
-        severity=extra.get("severity", "medium"),
+        severity=extra.get("severity", "medium") if message.level >= checks.WARNING else "",
         title=message.msg,
         detail=message.hint or "",
         fix_url=extra.get("fix_url", ""),

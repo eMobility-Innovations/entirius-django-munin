@@ -1,8 +1,7 @@
 # AGENTS.md
 
-Module discovery and runtime configuration for Volkanos — distribution `entirius-django-munin`,
-Django app `django_munin`. Auto-discovers installed Volkanos modules via `is_volkanos = True` flag
-on AppConfig, introspects their structure (models, API, channels, translations…), persists to DB,
+`entirius-django-munin` (Django app `django_munin`) — module discovery and runtime configuration for Entirius.
+Auto-discovers installed Entirius modules via the `is_volkanos = True` flag on AppConfig, introspects their structure (models, API, channels, translations…), persists to DB,
 and serves via REST API. Frontends read this instead of hardcoding module lists.
 
 ## Commands
@@ -22,7 +21,10 @@ and serves via REST API. Frontends read this instead of hardcoding module lists.
 - Git flow: `master` (production) + `develop` (integration); changes land via PR; semver tag on `master`.
 - Never rename the package / Django app_label / DB table prefix `django_munin` — it is a schema contract.
 - Migrations are part of the public contract — never edit an already released migration.
+- Access: areas live on the AppConfig (`access_areas`, `access_route_rules`), every admin view carries
+  `access_area`; a new admin route without one fails `tests/test_access_ownership.py`.
 - Default: do not commit — git is the user's call.
+- No AI attribution in commits or PR descriptions.
 
 ## Architecture
 
@@ -35,13 +37,26 @@ and serves via REST API. Frontends read this instead of hardcoding module lists.
 - `api/` — `MuninViewSet` (AllowAny; admin JWT gets extra fields), `ConfigEntryViewSet`
   (JWT + IsAdminUser), pagination, permissions; root prefix `api/munin/v2/`.
   `ConfigHealthViewSet` (IsAdminUser) serves `health/` and `health/check/` — listed before `<str:key>/`,
-  which would take "health" for a module key.
+  which would take "health" for a module key. Access area `munin.config`: `health/` is a read, the
+  `health/check/` POST a write (it runs live probes, for example an SMTP login).
 - `services/health_service.py` — runs the system checks tagged `entirius_config` (+ `entirius_probe` on
-  request) with `databases=["default"]`; never cached. `checks.py` registers `toolbox.status` only when
+  request) with `databases=["default"]` and `report_state=True` (a message below `WARNING` is a passing row with
+  its state shown, e.g. the toolbox `disabled`); never cached. `checks.py` registers `toolbox.status` only when
   `find_spec("django_utils.toolbox")` finds the client; munin never hard-imports the toolbox.
 - `management/commands/discover_modules.py` — manual re-scan entry point.
 
 Layer rule: `API → Services → Models → DB`. No ORM in views.
+
+| Topic | Where |
+|---|---|
+| API surface, configuration health, consumers | `docs/index.md` |
+| ERD config for the docs ERD generator | `docs/erd-config.yaml` |
+
+## Settings
+
+| Setting | Default | Description |
+|---|---|---|
+| `MUNIN_CACHE_TTL` | `300` | Cache lifetime of the registry responses, in seconds |
 
 ## Gotchas
 
