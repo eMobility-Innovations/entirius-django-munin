@@ -11,6 +11,7 @@ pytest.importorskip("django_access")
 from django.apps import apps  # noqa: E402
 from django_access.catalogue.areas import DEFAULT_AREAS, Area  # noqa: E402
 from django_access.catalogue.scopes import DEFAULT_SCOPES, TokenScope  # noqa: E402
+from django_access.services import route_map  # noqa: E402
 from django_access.testing import assert_routes_covered  # noqa: E402
 
 LABEL = "django_munin"
@@ -27,3 +28,18 @@ def test_declarations_match_the_access_defaults():
     scopes = [TokenScope(**{**item, "module": LABEL}) for item in getattr(config, "access_token_scopes", [])]
     assert areas == [item for item in DEFAULT_AREAS if item.module == LABEL]
     assert scopes == [item for item in DEFAULT_SCOPES if item.module == LABEL]
+
+
+def _required(suffix: str, method: str) -> str | None:
+    [info] = [
+        route_map.classify(route, view) for route, view in route_map.walk("django_munin.urls") if route.endswith(suffix)
+    ]
+    return route_map.required_permission(info, method)
+
+
+def test_recheck_with_live_probes_needs_the_write_level():
+    assert _required("health/check/", "POST") == "munin.config:write"
+
+
+def test_cached_health_stays_readable():
+    assert _required("health/", "GET") == "munin.config:read"

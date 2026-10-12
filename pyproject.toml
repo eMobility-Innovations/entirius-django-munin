@@ -1,7 +1,21 @@
 [project]
 name = "entirius-django-munin"
 version = "2.2.0"
-description = "Module discovery and runtime configuration for Volkanos"
+description = "Module discovery, runtime configuration and configuration health checks for Entirius"
+keywords = ["django", "module-registry", "configuration", "health-check", "ecommerce", "entirius"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Framework :: Django",
+    "Framework :: Django :: 5.2",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 authors = [{ name = "Entirius" }]
 readme = "README.md"
 requires-python = ">=3.11"
@@ -20,7 +34,11 @@ dev  = ["ruff", "pre-commit"]
 test = ["pytest", "pytest-django", "factory-boy"]
 
 [project.urls]
+Homepage = "https://docs.entirius.com/"
+Documentation = "https://github.com/entirius/entirius-django-munin/tree/develop/docs"
 Repository = "https://github.com/entirius/entirius-django-munin"
+Changelog = "https://github.com/entirius/entirius-django-munin/blob/develop/CHANGELOG.md"
+Issues = "https://github.com/entirius/entirius-django-munin/issues"
 
 [build-system]
 requires = ["hatchling"]

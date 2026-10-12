@@ -4,6 +4,19 @@
 
 - Access: the module declares its own access areas on its AppConfig and its admin views (copied from the
   entirius-django-access defaults; behaviour unchanged).
+- **Toolbox switched off on purpose.** With `AI_TOOLBOX_ENABLED = False` (entirius-django-utils) the
+  `toolbox.status` check passes: `GET /api/munin/v2/health/` lists it as one row with `state: disabled` and an
+  empty `severity`, after the failing rows and before the `configured` ones; `manage.py check` prints nothing.
+  The collector calls every check with `report_state=True`, and a message below `WARNING` becomes such a row.
+- `GET /api/munin/v2/` carries `platform.toolbox.state` (`configured`, `unconfigured`, `unreachable` or
+  `disabled`; `platform.toolbox` is `null` without the toolbox client), readable without admin credentials.
+  `platform.toolbox_status` stays deprecated and may now read `disabled`.
+- OpenAPI: `POST health/check/` carries the `Config Health` tag (it fell back to the default tag). Metadata only.
+
+### Security
+
+- `POST /api/munin/v2/health/check/` needs the write level of `munin.config`: it runs the live probes (for example
+  an SMTP login) and was mapped to read. The cached `GET /api/munin/v2/health/` stays readable.
 
 ## 2.2.0 — 2026-09-30
 
