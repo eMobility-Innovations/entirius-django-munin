@@ -1,6 +1,6 @@
 [project]
 name = "entirius-django-munin"
-version = "2.2.0"
+version = "2.3.0"
 description = "Module discovery, runtime configuration and configuration health checks for Entirius"
 keywords = ["django", "module-registry", "configuration", "health-check", "ecommerce", "entirius"]
 classifiers = [
