@@ -34,7 +34,9 @@ def collect(probe: bool = False) -> list[dict]:
         if tags.isdisjoint(check.tags):
             continue
         code = _code(check)
-        reported.setdefault(code, []).extend(_run(check, code))
+        rows = _run(check, code)
+        if rows is not None:
+            reported.setdefault(code, []).extend(rows)
     rows = sorted((r for rs in reported.values() for r in rs), key=lambda r: _SEVERITY_ORDER.get(r["severity"], 3))
     return rows + [_passing_row(code) for code, rs in sorted(reported.items()) if not rs]
 
@@ -44,11 +46,14 @@ def _code(check) -> str:
     return extra[0] if extra else f"{check.__module__}.{check.__name__}"
 
 
-def _run(check, code: str) -> list[dict]:
+def _run(check, code: str) -> list[dict] | None:
     probe = PROBE_TAG in check.tags
     try:
-        messages = check(app_configs=None, databases=["default"], **{REPORT_STATE_KWARG: True})
-        return [{**_message_row(code, m), "probe": probe} for m in messages]
+        messages = list(check(app_configs=None, databases=["default"], **{REPORT_STATE_KWARG: True}))
+        visible = [message for message in messages if not message.is_silenced()]
+        if messages and not visible:
+            return None  # Silenced is omitted, not evidence that this check passed.
+        return [{**_message_row(code, m), "probe": probe} for m in visible]
     except Exception:  # noqa: BLE001 — one broken check must not take the whole panel down
         logger.exception("Configuration check %s raised", code)
         return [_row(code, state="error", severity="medium", title="Configuration check failed to run", probe=probe)]

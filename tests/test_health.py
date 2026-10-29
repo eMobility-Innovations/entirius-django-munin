@@ -92,6 +92,22 @@ class TestCollect:
         ]
         assert (rows[1]["title"], rows[1]["detail"]) == ("d.off off", "on purpose")
 
+    def test_silenced_messages_are_omitted_without_a_passing_row(self, registry, settings):
+        settings.SILENCED_SYSTEM_CHECKS = ["a.warning"]
+        registry.register(lambda **kw: [_warning("a.warning")], "entirius_config", "a.check")
+        assert health_service.collect() == []
+
+    def test_mixed_messages_keep_only_unsilenced_rows(self, registry, settings):
+        settings.SILENCED_SYSTEM_CHECKS = ["a.warning"]
+        registry.register(lambda **kw: [_warning("a.warning"), _warning("b.warning")], "entirius_config", "a.check")
+        assert [row["code"] for row in health_service.collect()] == ["b.warning"]
+
+    def test_empty_checks_still_pass_when_another_check_is_silenced(self, registry, settings):
+        settings.SILENCED_SYSTEM_CHECKS = ["a.warning"]
+        registry.register(lambda **kw: [_warning("a.warning")], "entirius_config", "a.check")
+        registry.register(lambda **kw: [], "entirius_config", "b.check")
+        assert health_service.collect() == [health_service._passing_row("b.check")]
+
     def test_untagged_checks_are_ignored(self, registry):
         registry.register(lambda **kw: [_warning("x.y")], "models")
         assert health_service.collect() == []
